@@ -186,3 +186,31 @@ async def test_out_of_stock_no_reservation(pool, stock, reservation_count):
     st = await stock("CHINCHIN")
     assert st["qty_on_hand"] == 15
     assert st["available"] == 15
+
+
+# ---------------------------------------------------------------------------
+# Multi-modal vision: uploading an order note image triggers reservations.
+# ---------------------------------------------------------------------------
+async def test_multimodal_image_order(pool, stock):
+    settings.cached_mode = True
+    sid = _new_sid()
+
+    sample_image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    events = [ev async for ev in run_turn(pool, sid, "Order from this note", image=sample_image)]
+
+    # Check that session history contains multi-modal content parts
+    user_msg = SESSIONS[sid][1]
+    assert user_msg["role"] == "user"
+    assert isinstance(user_msg["content"], list)
+    assert any(p.get("type") == "image_url" for p in user_msg["content"])
+
+    # In cached mode, NOTE_STEPS reserves items from the note
+    tool_msgs = _tool_messages(sid)
+    assert any(m["name"] == "reserve_items" for m in tool_msgs)
+    assert _events_of(events, "assistant_done")
+
+    # Confirm order
+    confirm_events = await _drive(pool, sid, "yes")
+    assert any(m["name"] == "place_order" for m in _tool_messages(sid))
+    assert _events_of(confirm_events, "assistant_done")
+

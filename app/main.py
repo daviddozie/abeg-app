@@ -232,6 +232,7 @@ async def api_chat(request: Request):
         body = {}
     session_id = str(body.get("session_id") or "anon")
     message = str(body.get("message") or "")
+    image = str(body.get("image") or "")
 
     # BYOK: a visitor can bring their own OpenRouter key (header preferred so it
     # isn't echoed in the body). Their calls are billed to them and skip the
@@ -263,7 +264,7 @@ async def api_chat(request: Request):
     async def gen():
         try:
             async for event in agent.run_turn(
-                app.state.pool, session_id, message, api_key=byok or None
+                app.state.pool, session_id, message, api_key=byok or None, image=image or None
             ):
                 yield _sse(event)
         except Exception as exc:  # noqa: BLE001

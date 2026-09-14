@@ -65,6 +65,32 @@ DECLINE_STEPS = [
 ]
 
 
+# Steps replayed when the user sends an order note / catering list image.
+NOTE_STEPS = [
+    {"type": "delta", "text": "I can read your order note! Let me check live inventory for you."},
+    {
+        "type": "tool_calls",
+        "tool_calls": [
+            {
+                "name": "reserve_items",
+                "arguments": {
+                    "items": [
+                        {"sku": "SUYA", "qty": 2},
+                        {"sku": "ZOBO", "qty": 1},
+                        {"sku": "PUFFPUFF", "qty": 1},
+                    ]
+                },
+            }
+        ],
+    },
+    {
+        "type": "delta",
+        "text": "I read your note and held: 2x Beef Suya (₦4,000), 1x Zobo Drink (₦600), and 1x Puff Puff (₦800). Total: ₦5,400. Shall I place the order? Please confirm.",
+    },
+    {"type": "done", "finish_reason": "stop"},
+]
+
+
 # The 4 scripted messages from the contract. These are intentionally
 # JOLLOF-free so the last unit stays reserved for the oversell race demo.
 SCRIPTS: dict[str, list[dict]] = {

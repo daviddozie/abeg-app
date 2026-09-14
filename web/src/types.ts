@@ -33,6 +33,7 @@ export interface ChatMessage {
   streaming: boolean;
   status?: string | null;
   guardNote?: string | null;
+  image?: string | null;
 }
 
 /* ------------------------------------------------------------------ */

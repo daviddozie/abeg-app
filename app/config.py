@@ -30,7 +30,12 @@ AVAILABLE_MODELS = [
     {
         "id": "openai/gpt-4o-mini",
         "label": "GPT-4o mini",
-        "note": "OpenAI's small model — balanced",
+        "note": "OpenAI's small model — Vision & balanced",
+    },
+    {
+        "id": "google/gemini-2.0-flash-001",
+        "label": "Gemini 2.0 Flash",
+        "note": "Google's ultra-fast model — Vision & tool calling",
     },
     {
         "id": "anthropic/claude-3.5-haiku",
