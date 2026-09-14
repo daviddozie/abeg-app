@@ -27,7 +27,13 @@ SYSTEM_PROMPT = (
     "You have tools to look up products, prices and stock, hold items and place orders. "
     "If the customer's requested product or quantity is unclear or missing, ASK a short "
     "clarifying question instead of assuming. "
-    "Order flow: once the customer names the item(s) and quantity, call reserve_items, "
+    "Vision capabilities: You CAN see and process images. "
+    "If the customer sends a photo of a handwritten note, catering list, or receipt, "
+    "read the items and quantities, check stock using search_inventory or check_stock, and call reserve_items. "
+    "If the customer sends a photo of cooked food or a dish (e.g. jollof rice, suya, puff puff, pepper soup), "
+    "identify the dish, match it to the closest item on our menu (such as Party Jollof Rice), and ask how many "
+    "plates or portions they would like to order. NEVER claim that you cannot process images. "
+    "Order flow: once the customer names the item(s) and quantity (or confirms from a photo), call reserve_items, "
     "then show them the exact items, quantities, unit prices and total and ask them to confirm. "
     "As soon as they confirm (e.g. 'yes'), IMMEDIATELY call place_order for that reservation and "
     "give them the order reference. Do not ask them to confirm twice. "
@@ -203,6 +209,7 @@ async def run_turn(
     user_text: str,
     history: list[dict] | None = None,
     api_key: str | None = None,
+    image: str | None = None,
 ) -> AsyncIterator[dict]:
     # Build/resume history.
     if history is not None:
@@ -213,7 +220,21 @@ async def run_turn(
             messages = [_system_message()]
     if not messages or messages[0].get("role") != "system":
         messages = [_system_message()] + messages
-    messages.append({"role": "user", "content": user_text})
+
+    # Build user message content (multimodal if image provided).
+    if image:
+        prompt_text = (
+            user_text.strip()
+            if user_text and user_text.strip()
+            else "Please read this order note/list. Identify the food items and quantities requested, look them up on our menu using search_inventory or check_stock, and reserve the available items."
+        )
+        user_content = [
+            {"type": "text", "text": prompt_text},
+            {"type": "image_url", "image_url": {"url": image}},
+        ]
+        messages.append({"role": "user", "content": user_content})
+    else:
+        messages.append({"role": "user", "content": user_text})
 
     llm = get_llm(api_key=api_key)
     tool_calls_this_turn = 0
@@ -224,7 +245,8 @@ async def run_turn(
     # ---- trace instrumentation (powers the Workshop "Anatomy" panel) ----
     t0 = time.perf_counter()
     ttft_ms: int | None = None                 # time to first visible token
-    steps: list[dict] = [{"kind": "user", "text": user_text}]
+    steps_text = user_text if user_text else ("[Uploaded order note image]" if image else "")
+    steps: list[dict] = [{"kind": "user", "text": steps_text}]
     usage_totals = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     cost_usd = 0.0
     saw_usage = False

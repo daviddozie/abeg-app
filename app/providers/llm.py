@@ -34,10 +34,19 @@ class OpenRouterLlm(LlmProvider):
         self.model = model or settings.openrouter_model
 
     async def stream(self, messages: list[dict], tools: list[dict]) -> AsyncIterator[dict]:
-        # Read model + temperature live so Workshop knob changes take effect on
-        # the very next turn without reconstructing the provider.
+        model_name = settings.openrouter_model or self.model
+        has_image = any(
+            isinstance(m.get("content"), list)
+            and any(isinstance(p, dict) and p.get("type") == "image_url" for p in m["content"])
+            for m in messages
+        )
+        # If the turn includes an image and the active model is not vision-capable,
+        # fallback to gpt-4o-mini so the call succeeds.
+        if has_image and not any(v in model_name.lower() for v in ("gpt-4o", "gemini", "vision", "claude-3")):
+            model_name = "openai/gpt-4o-mini"
+
         payload = {
-            "model": settings.openrouter_model or self.model,
+            "model": model_name,
             "messages": messages,
             "stream": True,
             "temperature": settings.temperature,
@@ -141,11 +150,14 @@ class CachedLlm(LlmProvider):
 
     async def stream(self, messages: list[dict], tools: list[dict]) -> AsyncIterator[dict]:
         last_user = self._last_user_text(messages)
+        has_image = self._last_user_has_image(messages)
 
         if cache.is_confirmation(last_user):
             steps = cache.CONFIRM_STEPS
         elif self._is_decline(last_user):
             steps = cache.DECLINE_STEPS
+        elif has_image:
+            steps = cache.NOTE_STEPS
         else:
             steps = cache.steps_for(last_user)
 
@@ -211,6 +223,18 @@ class CachedLlm(LlmProvider):
                 if isinstance(content, list):
                     return " ".join(part.get("text", "") for part in content if isinstance(part, dict))
         return ""
+
+    @staticmethod
+    def _last_user_has_image(messages: list[dict]) -> bool:
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                content = m.get("content")
+                if isinstance(content, list):
+                    return any(
+                        isinstance(part, dict) and part.get("type") == "image_url"
+                        for part in content
+                    )
+        return False
 
     @staticmethod
     def _is_decline(text: str) -> bool:

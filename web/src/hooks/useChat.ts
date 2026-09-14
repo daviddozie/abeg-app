@@ -34,14 +34,17 @@ export function useChat(sessionId: string, onUserSend?: (msg: string) => void) {
   }, []);
 
   const sendChat = useCallback(
-    async (text: string) => {
+    async (text: string, image?: string | null) => {
       const message = String(text == null ? '' : text).trim();
-      if (!message || busyRef.current) return;
+      if ((!message && !image) || busyRef.current) return;
       busyRef.current = true;
       setBusy(true);
-      onUserSend?.(message);
+      onUserSend?.(message || 'Order from note');
 
-      setMessages((prev) => [...prev, { id: nextId(), role: 'user', text: message, streaming: false }]);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: 'user', text: message, image: image || null, streaming: false },
+      ]);
 
       const bubbleId = nextId();
       setMessages((prev) => [
@@ -67,7 +70,7 @@ export function useChat(sessionId: string, onUserSend?: (msg: string) => void) {
         const resp = await fetch('/api/chat', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ session_id: sessionId, message }),
+          body: JSON.stringify({ session_id: sessionId, message, image: image || undefined }),
         });
         if (!resp.ok || !resp.body) throw new Error('chat http ' + resp.status);
 
