@@ -2,7 +2,7 @@
 
 <h1><img src="docs/images/abeg-logo.png" width="40" height="40" align="absmiddle" alt="" />&nbsp;&nbsp;Abeg</h1>
 
-**A food-ordering assistant you talk or type to, grounded in a real database.
+**A food-ordering assistant you talk, send Image, note or type to, grounded in a real database.
 Built to show the two things that separate a real AI feature from a toy: keeping the model honest, and keeping it on task.**
 
 [**Live demo**](https://abeg.ifeolulesi.com) &nbsp;·&nbsp; [Recording](https://selar.com/38531854y1) &nbsp;·&nbsp; [MIT License](LICENSE)
